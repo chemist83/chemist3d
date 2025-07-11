@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Kimyasal Kaşifi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            width: 80%;
+            max-width: 600px;
+        }
+        #searchInput {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        #searchButton {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        #searchButton:hover {
+            background-color: #0056b3;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: row; /* For side-by-side layout */
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px; /* Adjust as needed */
+            box-sizing: border-box; /* Include padding/border in width */
+        }
+        #resultsContainer {
+            width: 30%; /* Or fixed width */
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Enable scrolling for results */
+            max-height: 600px; /* Limit height of results list */
+        }
+        #resultsList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-item:hover {
+            background-color: #f9f9f9;
+        }
+        #babylonCanvasContainer {
+            flex-grow: 1; /* Takes up remaining space */
+            background-color: #222; /* Dark background for the 3D viewer */
+            border-radius: 8px;
+            overflow: hidden; /* Important to contain the canvas */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 500px; /* Minimum height for the canvas */
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block; /* Remove extra space below canvas */
+            outline: none; /* Remove focus outline */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>3D Kimyasal Kaşifi</h1>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Madde adı veya formül girin...">
+        <button id="searchButton">Araştır</button>
+    </div>
+
+    <div class="main-content">
+        <div id="resultsContainer">
+            <h2>Arama Sonuçları</h2>
+            <ul id="resultsList">
+                </ul>
+        </div>
+
+        <div id="babylonCanvasContainer">
+            <canvas id="renderCanvas"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <script>
+        // --- DATA STRUCTURE ---
+        const substances = [
+            {
+                name: "Karbondioksit",
+                formula: "CO2",
+                modelPath: "https://models.babylonjs.com/co2.gltf" // Örnek GLTF yolu, gerçek modelleri kendi sunucunuza koyun
+            },
+            {
+                name: "Glikoz",
+                formula: "C6H12O6",
+                modelPath: "https://models.babylonjs.com/glucose.gltf"
+            },
+            {
+                name: "Metan",
+                formula: "CH4",
+                modelPath: "https://models.babylonjs.com/methane.gltf"
+            },
+            {
+                name: "Etan",
+                formula: "C2H6",
+                modelPath: "https://models.babylonjs.com/ethane.gltf"
+            },
+            {
+                name: "Su",
+                formula: "H2O",
+                modelPath: "https://models.babylonjs.com/water.gltf"
+            },
+            {
+                name: "Amonyak",
+                formula: "NH3",
+                modelPath: "https://models.babylonjs.com/ammonia.gltf"
+            },
+            {
+                name: "Oksijen",
+                formula: "O2",
+                modelPath: "https://models.babylonjs.com/oxygen.gltf"
+            },
+            {
+                name: "Azot",
+                formula: "N2",
+                modelPath: "https://models.babylonjs.com/nitrogen.gltf"
+            },
+            {
+                name: "Hidrojen",
+                formula: "H2",
+                modelPath: "https://models.babylonjs.com/hydrogen.gltf"
+            }
+            // Daha fazla madde ekleyebilirsiniz
+            // Not: Bu model yolları sadece örnektir. Kendi .gltf veya .babylon modellerinizi kullanmanız gerekecek.
+            // Modelleme kaynakları için: https://www.turbosquid.com/, https://sketchfab.com/ (molekül modelleri arayın)
+            // Veya Blender gibi bir yazılımla kendiniz oluşturun.
+        ];
+
+        // --- HTML ELEMENTS ---
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const resultsList = document.getElementById('resultsList');
+        const canvas = document.getElementById('renderCanvas');
+
+        // --- BABYLON.JS SETUP ---
+        const engine = new BABYLON.Engine(canvas, true);
+        let currentModel = null; // To keep track of the currently loaded 3D model
+
+        const createScene = function () {
+            const scene = new BABYLON.Scene(engine);
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.lowerRadiusLimit = 1; // Prevent zooming too close
+            camera.upperRadiusLimit = 10; // Prevent zooming too far
+            camera.wheelPrecision = 50; // Adjust mouse wheel sensitivity
+
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            light.intensity = 0.7;
+
+            // Add a more directional light for better shadows/highlights (optional)
+            const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0, -1, -0.5), scene);
+            dirLight.position = new BABYLON.Vector3(0, 5, 5);
+            dirLight.intensity = 0.5;
+
+            // Basic environment (optional but good for visuals)
+            const environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("https://assets.babylonjs.com/environments/environmentSpecular.env", scene);
+            scene.environmentTexture = environmentTexture;
+            scene.createDefaultSkybox(environmentTexture, true, 1000);
+
+
+            return scene;
+        };
+
+        const scene = createScene();
+
+        // Run the render loop
+        engine.runRenderLoop(function () {
+            scene.render();
+        });
+
+        // Handle window resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+
+        // Function to load and display a 3D model
+        async function loadModel(modelPath) {
+            // Clear previous model if one exists
+            if (currentModel) {
+                currentModel.dispose();
+                currentModel = null;
+            }
+
+            try {
+                // Import the model
+                const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", modelPath, scene);
+                currentModel = result.meshes[0]; // Get the main mesh or root node
+
+                // If the model has multiple meshes and isn't parented, you might need to find the root or create one
+                // For simplicity, we assume result.meshes[0] is sufficient.
+
+                // Optional: Scale and center the model if needed
+                const bounds = currentModel.getHierarchyBoundingVectors();
+                const size = bounds.max.subtract(bounds.min);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 2 / maxDim; // Adjust 2 to fit your scene scale
+                currentModel.scaling = new BABYLON.Vector3(scale, scale, scale);
+
+                const center = bounds.min.add(size.scale(0.5));
+                currentModel.position = center.scale(-scale); // Center the model at origin
+
+                // Adjust camera to fit the new model
+                scene.createDefaultCameraOrLight(true, true, true);
+                // Reset camera target to origin
+                scene.activeCamera.setTarget(BABYLON.Vector3.Zero());
+
+
+            } catch (error) {
+                console.error("Error loading model:", modelPath, error);
+                // Optionally display an error message to the user
+                resultsList.innerHTML = `<p style="color: red;">Model yüklenirken bir hata oluştu: ${modelPath}</p>`;
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        searchButton.addEventListener('click', () => {
+            performSearch();
+        });
+
+        searchInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            resultsList.innerHTML = ''; // Clear previous results
+
+            const filteredSubstances = substances.filter(sub =>
+                sub.name.toLowerCase().includes(searchTerm) ||
+                sub.formula.toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredSubstances.length === 0) {
+                resultsList.innerHTML = '<li>Hiç sonuç bulunamadı.</li>';
+                if (currentModel) {
+                    currentModel.dispose(); // Remove current model if no results
+                    currentModel = null;
+                }
+                return;
+            }
+
+            filteredSubstances.forEach(sub => {
+                const itemLi = document.createElement('li');
+                itemLi.className = 'result-item';
+                itemLi.textContent = sub.name + ' (' + sub.formula + ')';
+
+                itemLi.addEventListener('click', () => {
+                    loadModel(sub.modelPath);
+                });
+                resultsList.appendChild(itemLi);
+            });
+        }
+
+        // Initial load (optional: load a default model or show instructions)
+        // loadModel(substances[0].modelPath); // Load the first model by default
+    </script>
+
+</body>
+  </html>
