@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Kimyasal Kaşifi</title>
+    <title>3D Kimyasal Kaşifi - Canlı Thumbnail</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,6 +13,7 @@
             flex-direction: column;
             align-items: center;
             background-color: #f0f0f0;
+            color: #333;
         }
         h1 {
             color: #333;
@@ -40,27 +41,28 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 1rem;
+            transition: background-color 0.2s ease;
         }
         #searchButton:hover {
             background-color: #0056b3;
         }
         .main-content {
             display: flex;
-            flex-direction: row; /* For side-by-side layout */
+            flex-direction: row;
             gap: 20px;
             width: 100%;
-            max-width: 1200px; /* Adjust as needed */
-            box-sizing: border-box; /* Include padding/border in width */
+            max-width: 1200px;
+            box-sizing: border-box;
         }
         #resultsContainer {
-            width: 30%; /* Or fixed width */
+            width: 40%; /* Thumbnail için biraz daha geniş */
             background-color: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow-y: auto; /* Enable scrolling for results */
-            max-height: 600px; /* Limit height of results list */
+            overflow-y: auto;
+            max-height: 600px;
         }
         #resultsList {
             list-style: none;
@@ -68,10 +70,13 @@
             margin: 0;
         }
         .result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Metin ve canvas arasında boşluk */
             padding: 10px;
             border-bottom: 1px solid #eee;
-            cursor: pointer;
             transition: background-color 0.2s ease;
+            cursor: pointer; /* Tüm item'ı tıklanabilir yapıyoruz */
         }
         .result-item:last-child {
             border-bottom: none;
@@ -79,21 +84,31 @@
         .result-item:hover {
             background-color: #f9f9f9;
         }
+        .result-text {
+            flex-grow: 1; /* Metnin kalan alanı kaplamasını sağlar */
+        }
+        .thumbnail-canvas {
+            width: 80px; /* Küçük 3D önizleme boyutu */
+            height: 80px;
+            border: 1px solid #aaa;
+            background-color: #000; /* Boş canvas'ın arkası siyah olsun */
+            border-radius: 4px;
+        }
         #babylonCanvasContainer {
-            flex-grow: 1; /* Takes up remaining space */
-            background-color: #222; /* Dark background for the 3D viewer */
+            flex-grow: 1;
+            background-color: #222;
             border-radius: 8px;
-            overflow: hidden; /* Important to contain the canvas */
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 500px; /* Minimum height for the canvas */
+            min-height: 500px;
         }
         #renderCanvas {
             width: 100%;
             height: 100%;
-            display: block; /* Remove extra space below canvas */
-            outline: none; /* Remove focus outline */
+            display: block;
+            outline: none;
         }
     </style>
 </head>
@@ -122,79 +137,124 @@
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
     <script>
-        // --- DATA STRUCTURE ---
-        const substances = [
+        // --- Atom ve Bağ Ayarları ---
+        const atomProperties = {
+            "C": { color: new BABYLON.Color3(0.3, 0.3, 0.3), radius: 0.4 }, // Karbon (gri)
+            "O": { color: new BABYLON.Color3(1.0, 0.0, 0.0), radius: 0.3 }, // Oksijen (kırmızı)
+            "H": { color: new BABYLON.Color3(1.0, 1.0, 1.0), radius: 0.25 }, // Hidrojen (beyaz)
+            "N": { color: new BABYLON.Color3(0.0, 0.0, 1.0), radius: 0.35 }, // Azot (mavi)
+            // Diğer elementleri buraya ekleyebilirsiniz
+        };
+
+        const bondProperties = {
+            color: new BABYLON.Color3(0.5, 0.5, 0.5), // Bağlar için renk (orta gri)
+            radius: 0.08, // Bağ silindirlerinin yarıçapı
+        };
+
+        // --- Molekül Yapılarını Tanımlama ---
+        const molecules = [
             {
                 name: "Karbondioksit",
                 formula: "CO2",
-                modelPath: "https://models.babylonjs.com/co2.gltf" // Örnek GLTF yolu, gerçek modelleri kendi sunucunuza koyun
-            },
-            {
-                name: "Glikoz",
-                formula: "C6H12O6",
-                modelPath: "https://models.babylonjs.com/glucose.gltf"
-            },
-            {
-                name: "Metan",
-                formula: "CH4",
-                modelPath: "https://models.babylonjs.com/methane.gltf"
-            },
-            {
-                name: "Etan",
-                formula: "C2H6",
-                modelPath: "https://models.babylonjs.com/ethane.gltf"
+                structure: {
+                    atoms: [
+                        { type: "O", pos: new BABYLON.Vector3(-1.2, 0, 0) }, // Oksijen 1
+                        { type: "C", pos: new BABYLON.Vector3(0, 0, 0) },    // Karbon (merkez)
+                        { type: "O", pos: new BABYLON.Vector3(1.2, 0, 0) }   // Oksijen 2
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // O1 - C
+                        { atom1Idx: 1, atom2Idx: 2 }  // C - O2
+                    ]
+                }
             },
             {
                 name: "Su",
                 formula: "H2O",
-                modelPath: "https://models.babylonjs.com/water.gltf"
+                structure: {
+                    atoms: [
+                        { type: "O", pos: new BABYLON.Vector3(0, 0.2, 0) },  // Oksijen (merkez)
+                        { type: "H", pos: new BABYLON.Vector3(-0.8, -0.6, 0) }, // Hidrojen 1
+                        { type: "H", pos: new BABYLON.Vector3(0.8, -0.6, 0) }   // Hidrojen 2
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // O - H1
+                        { atom1Idx: 0, atom2Idx: 2 }  // O - H2
+                    ]
+                }
             },
             {
-                name: "Amonyak",
-                formula: "NH3",
-                modelPath: "https://models.babylonjs.com/ammonia.gltf"
+                name: "Metan",
+                formula: "CH4",
+                structure: {
+                    atoms: [
+                        { type: "C", pos: new BABYLON.Vector3(0, 0, 0) },    // Karbon (merkez)
+                        { type: "H", pos: new BABYLON.Vector3(0, 1, 0) },    // H1
+                        { type: "H", pos: new BABYLON.Vector3(0.94, -0.33, -0.82) }, // H2 (tetrahedral açıları simüle etmek için)
+                        { type: "H", pos: new BABYLON.Vector3(-0.94, -0.33, -0.82) }, // H3
+                        { type: "H", pos: new BABYLON.Vector3(0, -0.33, 1.0) }   // H4
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // C-H1
+                        { atom1Idx: 0, atom2Idx: 2 }, // C-H2
+                        { atom1Idx: 0, atom2Idx: 3 }, // C-H3
+                        { atom1Idx: 0, atom2Idx: 4 }  // C-H4
+                    ]
+                }
             },
             {
-                name: "Oksijen",
-                formula: "O2",
-                modelPath: "https://models.babylonjs.com/oxygen.gltf"
-            },
-            {
-                name: "Azot",
-                formula: "N2",
-                modelPath: "https://models.babylonjs.com/nitrogen.gltf"
-            },
-            {
-                name: "Hidrojen",
-                formula: "H2",
-                modelPath: "https://models.babylonjs.com/hydrogen.gltf"
+                name: "Glikoz",
+                formula: "C6H12O6",
+                // Bu sadece görsel bir placeholder'dır, gerçek glikoz yapısı çok daha karmaşıktır.
+                structure: {
+                    atoms: [
+                        { type: "C", pos: new BABYLON.Vector3(-1.0, 0.5, 0) }, { type: "C", pos: new BABYLON.Vector3(0.0, 0.5, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(1.0, 0.5, 0) }, { type: "C", pos: new BABYLON.Vector3(1.0, -0.5, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(0.0, -0.5, 0) }, { type: "C", pos: new BABYLON.Vector3(-1.0, -0.5, 0) },
+                        { type: "O", pos: new BABYLON.Vector3(0.0, 1.5, 0) }, { type: "H", pos: new BABYLON.Vector3(-1.0, 1.2, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(0.0, 1.2, 0) }, { type: "H", pos: new BABYLON.Vector3(1.0, 1.2, 0) },
+                        { type: "O", pos: new BABYLON.Vector3(2.0, 0.5, 0) }, { type: "H", pos: new BABYLON.Vector3(2.0, -0.2, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(-2.0, 0.5, 0) }, { type: "H", pos: new BABYLON.Vector3(-1.0, -1.2, 0) },
+                        { type: "O", pos: new BABYLON.Vector3(-0.5, -1.2, 0.5) }, { type: "H", pos: new BABYLON.Vector3(0.0, -1.2, 0.5) },
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, { atom1Idx: 1, atom2Idx: 2 },
+                        { atom1Idx: 2, atom2Idx: 3 }, { atom1Idx: 3, atom2Idx: 4 },
+                        { atom1Idx: 4, atom2Idx: 5 }, { atom1Idx: 5, atom2Idx: 0 },
+                        { atom1Idx: 1, atom2Idx: 6 }, { atom1Idx: 0, atom2Idx: 7 },
+                        { atom1Idx: 1, atom2Idx: 8 }, { atom1Idx: 2, atom2Idx: 9 },
+                        { atom1Idx: 2, atom2Idx: 10 }, { atom1Idx: 10, atom2Idx: 11 },
+                        { atom1Idx: 0, atom2Idx: 12 }, { atom1Idx: 5, atom2Idx: 13 },
+                        { atom1Idx: 4, atom2Idx: 14 }, { atom1Idx: 14, atom2Idx: 15 },
+                    ]
+                }
             }
-            // Daha fazla madde ekleyebilirsiniz
-            // Not: Bu model yolları sadece örnektir. Kendi .gltf veya .babylon modellerinizi kullanmanız gerekecek.
         ];
+
 
         // --- HTML ELEMENTS ---
         const searchInput = document.getElementById('searchInput');
         const searchButton = document.getElementById('searchButton');
         const resultsList = document.getElementById('resultsList');
-        const canvas = document.getElementById('renderCanvas');
+        const mainCanvas = document.getElementById('renderCanvas');
 
-        // --- BABYLON.JS SETUP ---
-        const engine = new BABYLON.Engine(canvas, true);
-        let currentModel = null; // To keep track of the currently loaded 3D model
+        // --- GLOBAL BABYLON.JS SETUP (for the main viewer) ---
+        const mainEngine = new BABYLON.Engine(mainCanvas, true);
+        let currentMainMoleculeContainer = null; // Ana görüntüleyicideki molekül
+        let mainScene = createMainScene(); // Ana sahneyi oluştur
 
-        const createScene = function () {
-            const scene = new BABYLON.Scene(engine);
-            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), scene);
-            camera.attachControl(canvas, true);
-            camera.lowerRadiusLimit = 1; // Prevent zooming too close
-            camera.upperRadiusLimit = 10; // Prevent zooming too far
-            camera.wheelPrecision = 50; // Adjust mouse wheel sensitivity
+        function createMainScene() {
+            const scene = new BABYLON.Scene(mainEngine);
+            const camera = new BABYLON.ArcRotateCamera("mainCamera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), scene);
+            camera.attachControl(mainCanvas, true);
+            camera.lowerRadiusLimit = 1;
+            camera.upperRadiusLimit = 10;
+            camera.wheelPrecision = 50;
 
-            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            const light = new BABYLON.HemisphericLight("mainLight", new BABYLON.Vector3(0, 1, 0), scene);
             light.intensity = 0.7;
 
-            const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0, -1, -0.5), scene);
+            const dirLight = new BABYLON.DirectionalLight("mainDirLight", new BABYLON.Vector3(0, -1, -0.5), scene);
             dirLight.position = new BABYLON.Vector3(0, 5, 5);
             dirLight.intensity = 0.5;
 
@@ -203,57 +263,113 @@
             scene.createDefaultSkybox(environmentTexture, true, 1000);
 
             return scene;
-        };
+        }
 
-        const scene = createScene();
-
-        // Run the render loop
-        engine.runRenderLoop(function () {
-            scene.render();
+        // Ana render döngüsü
+        mainEngine.runRenderLoop(function () {
+            mainScene.render();
         });
 
-        // Handle window resize
+        // Ana canvas'ın boyutunu ayarla
         window.addEventListener("resize", function () {
-            engine.resize();
+            mainEngine.resize();
         });
 
-        // Function to load and display a 3D model
-        async function loadModel(modelPath) {
-            // Clear previous model if one exists
-            if (currentModel) {
-                currentModel.dispose();
-                currentModel = null;
-            }
+        // --- Helper functions for creating atoms and bonds ---
+        function createBond(point1, point2, scene) {
+            const distance = BABYLON.Vector3.Distance(point1, point2);
+            const bond = BABYLON.MeshBuilder.CreateCylinder("bond", {
+                height: distance,
+                diameter: bondProperties.radius * 2,
+                tessellation: 24
+            }, scene);
 
-            try {
-                // Import the model
-                // The "" "" in ImportMeshAsync are for meshNames and rootUrl.
-                // If modelPath is a full URL, rootUrl can be empty.
-                const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", modelPath, scene);
-                currentModel = result.meshes[0]; // Get the main mesh or root node
+            const bondMaterial = new BABYLON.StandardMaterial("bondMat", scene);
+            bondMaterial.diffuseColor = bondProperties.color;
+            bond.material = bondMaterial;
 
-                // Optional: Scale and center the model if needed
-                if (currentModel) { // Ensure model was loaded
-                    const bounds = currentModel.getHierarchyBoundingVectors();
-                    const size = bounds.max.subtract(bounds.min);
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = 2 / maxDim; // Adjust 2 to fit your scene scale
-                    currentModel.scaling = new BABYLON.Vector3(scale, scale, scale);
+            bond.position = BABYLON.Vector3.Lerp(point1, point2, 0.5);
 
-                    const center = bounds.min.add(size.scale(0.5));
-                    currentModel.position = center.scale(-scale); // Center the model at origin
+            const v = point2.subtract(point1);
+            const axis = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), v);
+            const angle = Math.acos(BABYLON.Vector3.Dot(BABYLON.Vector3.Up(), v.normalize()));
+            bond.rotationQuaternion = BABYLON.Quaternion.RotationAxis(axis.normalize(), angle);
 
-                    // Adjust camera to fit the new model
-                    scene.createDefaultCameraOrLight(true, true, true);
-                    // Reset camera target to origin
-                    scene.activeCamera.setTarget(BABYLON.Vector3.Zero());
+            return bond;
+        }
+
+        /**
+         * Belirtilen molekül yapısını 3D olarak oluşturur.
+         * @param {Object} moleculeStructure - Molekülün atom ve bağ yapılarını içeren obje.
+         * @param {BABYLON.Scene} targetScene - Molekülün çizileceği sahne (ana sahne veya thumbnail sahnesi).
+         * @param {BABYLON.ArcRotateCamera} [cameraToControl] - Eğer varsa, sahnenin kamerasını moleküle göre ayarlamak için.
+         * @returns {BABYLON.TransformNode} Oluşturulan molekülü içeren TransformNode.
+         */
+        function createMoleculeMeshes(moleculeStructure, targetScene, cameraToControl = null) {
+            const moleculeContainer = new BABYLON.TransformNode("moleculeContainer", targetScene);
+
+            const atoms = [];
+            moleculeStructure.atoms.forEach((atomData, index) => {
+                const props = atomProperties[atomData.type];
+                if (!props) {
+                    console.warn(`Atom tipi bulunamadı: ${atomData.type}. Atlandı.`);
+                    return;
                 }
 
+                const atom = BABYLON.MeshBuilder.CreateSphere(`atom-${index}-${atomData.type}`, {
+                    diameter: props.radius * 2,
+                    segments: 16 // Thumbnail için daha az segment
+                }, targetScene);
+                atom.position = atomData.pos;
 
-            } catch (error) {
-                console.error("Error loading model:", modelPath, error);
-                resultsList.innerHTML = `<li style="color: red;">Model yüklenirken bir hata oluştu: ${modelPath}</li>`;
+                const atomMaterial = new BABYLON.StandardMaterial(`atomMat-${atomData.type}`, targetScene);
+                atomMaterial.diffuseColor = props.color;
+                atom.material = atomMaterial;
+
+                atom.parent = moleculeContainer;
+                atoms.push(atom);
+            });
+
+            moleculeStructure.bonds.forEach(bondData => {
+                const atom1 = atoms[bondData.atom1Idx];
+                const atom2 = atoms[bondData.atom2Idx];
+
+                if (atom1 && atom2) {
+                    const bond = createBond(atom1.position, atom2.position, targetScene);
+                    bond.parent = moleculeContainer;
+                }
+            });
+
+            // Molekülü merkeze al ve kamera ayarlarını yap (eğer ana sahnedeyse)
+            if (cameraToControl) {
+                 // Molekülü sıfır noktasına göre ortala ve ölçekle
+                const bounds = moleculeContainer.getHierarchyBoundingVectors();
+                const size = bounds.max.subtract(bounds.min);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 0) { // Bölme hatasını önle
+                    const scaleFactor = 2 / maxDim; // Kameranın rahatça görebileceği bir boyuta ölçekle
+                    moleculeContainer.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
+                    const center = bounds.min.add(size.scale(0.5));
+                    moleculeContainer.position = center.scale(-scaleFactor);
+                }
+
+                cameraToControl.setTarget(BABYLON.Vector3.Zero());
+                cameraToControl.lowerBetaLimit = 0;
+                cameraToControl.upperBetaLimit = Math.PI;
             }
+
+            return moleculeContainer;
+        }
+
+        // --- THUMBNAIL SAHNE YÖNETİMİ ---
+        const thumbnailScenes = []; // Tüm aktif thumbnail sahnelerini ve motorlarını tutacak dizi
+
+        function disposeAllThumbnails() {
+            thumbnailScenes.forEach(item => {
+                item.scene.dispose();
+                item.engine.dispose();
+            });
+            thumbnailScenes.length = 0; // Diziyi temizle
         }
 
         // --- EVENT LISTENERS AND SEARCH LOGIC ---
@@ -268,57 +384,122 @@
         });
 
         function performSearch() {
-            const searchTerm = searchInput.value.toLowerCase().trim(); // Trim whitespace
-            resultsList.innerHTML = ''; // Clear previous results
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            resultsList.innerHTML = ''; // Eski sonuçları temizle
+            disposeAllThumbnails(); // Önceki tüm thumbnail sahnelerini temizle
 
-            if (searchTerm === "") { // Handle empty search
+            if (searchTerm === "") {
                 resultsList.innerHTML = '<li>Lütfen bir madde adı veya formül girin.</li>';
-                if (currentModel) {
-                    currentModel.dispose();
-                    currentModel = null;
+                if (currentMainMoleculeContainer) {
+                    currentMainMoleculeContainer.dispose();
+                    currentMainMoleculeContainer = null;
                 }
                 return;
             }
 
-            const filteredSubstances = substances.filter(sub =>
-                sub.name.toLowerCase().includes(searchTerm) ||
-                sub.formula.toLowerCase().includes(searchTerm)
+            const filteredMolecules = molecules.filter(mol =>
+                mol.name.toLowerCase().includes(searchTerm) ||
+                mol.formula.toLowerCase().includes(searchTerm)
             );
 
-            if (filteredSubstances.length === 0) {
+            if (filteredMolecules.length === 0) {
                 resultsList.innerHTML = '<li>Hiç sonuç bulunamadı.</li>';
-                if (currentModel) {
-                    currentModel.dispose(); // Remove current model if no results
-                    currentModel = null;
+                if (currentMainMoleculeContainer) {
+                    currentMainMoleculeContainer.dispose();
+                    currentMainMoleculeContainer = null;
                 }
-            } else if (filteredSubstances.length === 1) {
-                // *** DIRECT LOAD IF ONLY ONE MATCH ***
-                const uniqueMatch = filteredSubstances[0];
-                resultsList.innerHTML = `<li>En yakın sonuç: <strong>${uniqueMatch.name} (${uniqueMatch.formula})</strong></li>`;
-                loadModel(uniqueMatch.modelPath);
             } else {
-                // Multiple matches, list them
-                resultsList.innerHTML = '<li>Birden fazla sonuç bulundu. Lütfen listeden seçin:</li>';
-                filteredSubstances.forEach(sub => {
+                filteredMolecules.forEach(mol => {
                     const itemLi = document.createElement('li');
                     itemLi.className = 'result-item';
-                    itemLi.textContent = sub.name + ' (' + sub.formula + ')';
 
-                    itemLi.addEventListener('click', () => {
-                        loadModel(sub.modelPath);
-                    });
+                    // Metin kısmı
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'result-text';
+                    textSpan.textContent = `${mol.name} (${mol.formula})`;
+                    itemLi.appendChild(textSpan);
+
+                    // Thumbnail Canvas kısmı
+                    const thumbnailCanvas = document.createElement('canvas');
+                    thumbnailCanvas.className = 'thumbnail-canvas';
+                    itemLi.appendChild(thumbnailCanvas);
+
                     resultsList.appendChild(itemLi);
+
+                    // --- Thumbnail için Babylon.js sahnesi oluştur ---
+                    const thumbEngine = new BABYLON.Engine(thumbnailCanvas, true, { preserveDrawingBuffer: true, stencil: true });
+                    const thumbScene = new BABYLON.Scene(thumbEngine);
+                    thumbScene.autoClear = true; // Her renderda sahneyi temizle
+
+                    // Thumbnail için basit bir kamera ve ışık
+                    const thumbCamera = new BABYLON.ArcRotateCamera("thumbCamera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), thumbScene);
+                    thumbCamera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA; // Ortografik kamera daha düzgün görünüm verebilir
+                    thumbCamera.orthoLeft = -1.5;
+                    thumbCamera.orthoRight = 1.5;
+                    thumbCamera.orthoTop = 1.5;
+                    thumbCamera.orthoBottom = -1.5;
+                    thumbCamera.setTarget(BABYLON.Vector3.Zero());
+                    thumbCamera.fovMode = BABYLON.Camera.FOVMODE_VERTICAL_FIXED; // Kamera FOV'unu sabit tut
+
+                    new BABYLON.HemisphericLight("thumbLight", new BABYLON.Vector3(0, 1, 0), thumbScene);
+
+                    // Molekülü thumbnail sahnesine çiz
+                    const thumbMolecule = createMoleculeMeshes(mol.structure, thumbScene, thumbCamera);
+
+                    // Thumbnail'ı döndürme animasyonu (isteğe bağlı)
+                    thumbScene.beforeRender = function() {
+                        if (thumbMolecule) {
+                            thumbMolecule.rotation.y += 0.02; // Y ekseninde döndür
+                        }
+                    };
+
+                    // Thumbnail render döngüsü
+                    thumbEngine.runRenderLoop(function () {
+                        thumbScene.render();
+                    });
+
+                    // Yeniden boyutlandırma olayını thumbnail'lara bağla
+                    window.addEventListener("resize", function () {
+                        thumbEngine.resize();
+                    });
+
+
+                    // Thumbnail sahnesini takip etmek için sakla
+                    thumbnailScenes.push({ engine: thumbEngine, scene: thumbScene });
+
+                    // Liste öğesine tıklama olayı (ana sahneyi güncellemek için)
+                    itemLi.addEventListener('click', () => {
+                        if (currentMainMoleculeContainer) {
+                            currentMainMoleculeContainer.dispose();
+                        }
+                        // Ana sahneye molekülü yeniden oluştur
+                        currentMainMoleculeContainer = createMoleculeMeshes(mol.structure, mainScene, mainScene.activeCamera);
+                    });
                 });
+
+                 // Tek eşleşme durumunda, ana sahneyi de güncelleyelim.
+                 // Eğer tek bir sonuç varsa, onu otomatik olarak ana sahneye yükle.
+                if (filteredMolecules.length === 1) {
+                    const uniqueMatch = filteredMolecules[0];
+                    if (currentMainMoleculeContainer) {
+                        currentMainMoleculeContainer.dispose();
+                    }
+                    currentMainMoleculeContainer = createMoleculeMeshes(uniqueMatch.structure, mainScene, mainScene.activeCamera);
+                }
             }
         }
 
-        // Optional: Load a default model or show instructions on initial page load
-        // Example: load Carbon Dioxide as a starting point
-        // const defaultSubstance = substances.find(sub => sub.name === "Karbondioksit");
-        // if (defaultSubstance) {
-        //     loadModel(defaultSubstance.modelPath);
-        // }
+        // Sayfa yüklendiğinde varsayılan bir molekülü göster
+        const defaultMol = molecules.find(mol => mol.name === "Karbondioksit");
+        if (defaultMol) {
+             createMoleculeMeshes(defaultMol.structure, mainScene, mainScene.activeCamera);
+             searchInput.value = defaultMol.name;
+             // Varsayılan olarak thumbnailler yüklenmiyor, performSearch çağırılmadığı için.
+             // Eğer varsayılanda da thumbnail istiyorsak, performSearch'i direkt çağırabiliriz.
+             performSearch(); // İlk yüklemede Karbondioksit'i hem ana ekranda hem thumbnail'da gösterir.
+        }
+
     </script>
 
 </body>
-</html>
+    </html>
