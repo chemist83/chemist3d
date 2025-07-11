@@ -48,21 +48,21 @@
         }
         .main-content {
             display: flex;
-            flex-direction: row;
+            flex-direction: row; /* Yan yana iki sütun */
             gap: 20px;
             width: 100%;
             max-width: 1200px;
             box-sizing: border-box;
         }
         #resultsContainer {
-            width: 40%; /* Thumbnail için biraz daha geniş */
+            width: 40%; /* Arama sonuçları listesi için genişlik */
             background-color: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow-y: auto;
-            max-height: 600px;
+            max-height: 600px; /* Kaydırma için maksimum yükseklik */
         }
         #resultsList {
             list-style: none;
@@ -70,8 +70,8 @@
             margin: 0;
         }
         .result-item {
-            display: flex;
-            align-items: center;
+            display: flex; /* İçerikleri yan yana hizala */
+            align-items: center; /* Dikeyde ortala */
             gap: 10px; /* Metin ve canvas arasında boşluk */
             padding: 10px;
             border-bottom: 1px solid #eee;
@@ -86,6 +86,7 @@
         }
         .result-text {
             flex-grow: 1; /* Metnin kalan alanı kaplamasını sağlar */
+            font-weight: bold; /* Madde adını kalın yap */
         }
         .thumbnail-canvas {
             width: 80px; /* Küçük 3D önizleme boyutu */
@@ -95,7 +96,7 @@
             border-radius: 4px;
         }
         #babylonCanvasContainer {
-            flex-grow: 1;
+            flex-grow: 1; /* Kalan alanı kapla */
             background-color: #222;
             border-radius: 8px;
             overflow: hidden;
@@ -143,7 +144,7 @@
             "O": { color: new BABYLON.Color3(1.0, 0.0, 0.0), radius: 0.3 }, // Oksijen (kırmızı)
             "H": { color: new BABYLON.Color3(1.0, 1.0, 1.0), radius: 0.25 }, // Hidrojen (beyaz)
             "N": { color: new BABYLON.Color3(0.0, 0.0, 1.0), radius: 0.35 }, // Azot (mavi)
-            // Diğer elementleri buraya ekleyebilirsiniz
+            // Daha fazla element ekleyebilirsiniz (örneğin S, Cl, P vb.)
         };
 
         const bondProperties = {
@@ -152,6 +153,8 @@
         };
 
         // --- Molekül Yapılarını Tanımlama ---
+        // Pozisyonlar temsili veya basitleştirilmiştir. Gerçek 3D koordinatlar için
+        // kimyasal veri tabanları (PDB, PubChem vb.) kullanılmalıdır.
         const molecules = [
             {
                 name: "Karbondioksit",
@@ -205,7 +208,8 @@
             {
                 name: "Glikoz",
                 formula: "C6H12O6",
-                // Bu sadece görsel bir placeholder'dır, gerçek glikoz yapısı çok daha karmaşıktır.
+                // Bu sadece görsel bir placeholder'dır, gerçek glikoz yapısı çok daha karmaşıktır ve halkalıdır.
+                // Gerçek glikoz için molekül veri tabanlarından PDB/XYZ koordinatları çekilmelidir.
                 structure: {
                     atoms: [
                         { type: "C", pos: new BABYLON.Vector3(-1.0, 0.5, 0) }, { type: "C", pos: new BABYLON.Vector3(0.0, 0.5, 0) },
@@ -226,6 +230,128 @@
                         { atom1Idx: 2, atom2Idx: 10 }, { atom1Idx: 10, atom2Idx: 11 },
                         { atom1Idx: 0, atom2Idx: 12 }, { atom1Idx: 5, atom2Idx: 13 },
                         { atom1Idx: 4, atom2Idx: 14 }, { atom1Idx: 14, atom2Idx: 15 },
+                    ]
+                }
+            },
+            {
+                name: "Etanol",
+                formula: "C2H5OH",
+                structure: {
+                    atoms: [
+                        { type: "C", pos: new BABYLON.Vector3(-0.75, 0, 0) },  // C1
+                        { type: "C", pos: new BABYLON.Vector3(0.75, 0, 0) },   // C2
+                        { type: "O", pos: new BABYLON.Vector3(1.75, 0, 0) },   // O
+                        { type: "H", pos: new BABYLON.Vector3(-1.0, 0.8, 0.5) }, // H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(-1.0, -0.8, 0.5) },// H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(-0.5, 0, -1.0) }, // H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(0.5, 0.8, 0.5) }, // H (C2)
+                        { type: "H", pos: new BABYLON.Vector3(0.5, -0.8, 0.5) },// H (C2)
+                        { type: "H", pos: new BABYLON.Vector3(2.0, 0.5, 0) }    // H (O)
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // C1-C2
+                        { atom1Idx: 1, atom2Idx: 2 }, // C2-O
+                        { atom1Idx: 0, atom2Idx: 3 }, // C1-H
+                        { atom1Idx: 0, atom2Idx: 4 }, // C1-H
+                        { atom1Idx: 0, atom2Idx: 5 }, // C1-H
+                        { atom1Idx: 1, atom2Idx: 6 }, // C2-H
+                        { atom1Idx: 1, atom2Idx: 7 }, // C2-H
+                        { atom1Idx: 2, atom2Idx: 8 }  // O-H
+                    ]
+                }
+            },
+            {
+                name: "Amonyak",
+                formula: "NH3",
+                structure: {
+                    atoms: [
+                        { type: "N", pos: new BABYLON.Vector3(0, 0.2, 0) },    // N (merkez)
+                        { type: "H", pos: new BABYLON.Vector3(-0.8, -0.5, 0.5) }, // H1
+                        { type: "H", pos: new BABYLON.Vector3(0.8, -0.5, 0.5) },  // H2
+                        { type: "H", pos: new BABYLON.Vector3(0, -0.5, -0.8) }    // H3
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // N-H1
+                        { atom1Idx: 0, atom2Idx: 2 }, // N-H2
+                        { atom1Idx: 0, atom2Idx: 3 }  // N-H3
+                    ]
+                }
+            },
+            {
+                name: "Hidrojen Peroksit",
+                formula: "H2O2",
+                structure: {
+                    atoms: [
+                        { type: "O", pos: new BABYLON.Vector3(-0.7, 0, 0) }, // O1
+                        { type: "O", pos: new BABYLON.Vector3(0.7, 0, 0) },  // O2
+                        { type: "H", pos: new BABYLON.Vector3(-1.2, 0.7, 0) }, // H1
+                        { type: "H", pos: new BABYLON.Vector3(1.2, 0.7, 0) }   // H2
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // O1-O2
+                        { atom1Idx: 0, atom2Idx: 2 }, // O1-H1
+                        { atom1Idx: 1, atom2Idx: 3 }  // O2-H2
+                    ]
+                }
+            },
+            {
+                name: "Aseton",
+                formula: "CH3COCH3",
+                structure: {
+                    atoms: [
+                        { type: "C", pos: new BABYLON.Vector3(0, 0, 0) },    // Merkez C (karbonil)
+                        { type: "O", pos: new BABYLON.Vector3(0, 1.2, 0) },  // O (karbonil)
+                        { type: "C", pos: new BABYLON.Vector3(-1.2, 0, 0) }, // C1 (metil)
+                        { type: "C", pos: new BABYLON.Vector3(1.2, 0, 0) },  // C2 (metil)
+                        { type: "H", pos: new BABYLON.Vector3(-1.5, 0.8, 0.5) }, // H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(-1.5, -0.8, 0.5) },// H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(-0.8, 0, -1.0) }, // H (C1)
+                        { type: "H", pos: new BABYLON.Vector3(1.5, 0.8, 0.5) }, // H (C2)
+                        { type: "H", pos: new BABYLON.Vector3(1.5, -0.8, 0.5) },// H (C2)
+                        { type: "H", pos: new BABYLON.Vector3(0.8, 0, -1.0) }  // H (C2)
+                    ],
+                    bonds: [
+                        { atom1Idx: 0, atom2Idx: 1 }, // C=O (karbonil)
+                        { atom1Idx: 0, atom2Idx: 2 }, // C-C1
+                        { atom1Idx: 0, atom2Idx: 3 }, // C-C2
+                        { atom1Idx: 2, atom2Idx: 4 }, // C1-H
+                        { atom1Idx: 2, atom2Idx: 5 }, // C1-H
+                        { atom1Idx: 2, atom2Idx: 6 }, // C1-H
+                        { atom1Idx: 3, atom2Idx: 7 }, // C2-H
+                        { atom1Idx: 3, atom2Idx: 8 }, // C2-H
+                        { atom1Idx: 3, atom2Idx: 9 }  // C2-H
+                    ]
+                }
+            },
+            {
+                name: "Benzen",
+                formula: "C6H6",
+                structure: {
+                    atoms: [
+                        // Karbon halkası (düzlemsel)
+                        { type: "C", pos: new BABYLON.Vector3(1.0, 0, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(0.5, 0.866, 0) }, // cos(60), sin(60)
+                        { type: "C", pos: new BABYLON.Vector3(-0.5, 0.866, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(-1.0, 0, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(-0.5, -0.866, 0) },
+                        { type: "C", pos: new BABYLON.Vector3(0.5, -0.866, 0) },
+                        // Hidrojenler
+                        { type: "H", pos: new BABYLON.Vector3(1.8, 0, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(0.9, 1.5, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(-0.9, 1.5, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(-1.8, 0, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(-0.9, -1.5, 0) },
+                        { type: "H", pos: new BABYLON.Vector3(0.9, -1.5, 0) }
+                    ],
+                    bonds: [
+                        // Karbon halkası bağları
+                        { atom1Idx: 0, atom2Idx: 1 }, { atom1Idx: 1, atom2Idx: 2 },
+                        { atom1Idx: 2, atom2Idx: 3 }, { atom1Idx: 3, atom2Idx: 4 },
+                        { atom1Idx: 4, atom2Idx: 5 }, { atom1Idx: 5, atom2Idx: 0 },
+                        // Karbon-Hidrojen bağları
+                        { atom1Idx: 0, atom2Idx: 6 }, { atom1Idx: 1, atom2Idx: 7 },
+                        { atom1Idx: 2, atom2Idx: 8 }, { atom1Idx: 3, atom2Idx: 9 },
+                        { atom1Idx: 4, atom2Idx: 10 }, { atom1Idx: 5, atom2Idx: 11 }
                     ]
                 }
             }
@@ -318,7 +444,7 @@
 
                 const atom = BABYLON.MeshBuilder.CreateSphere(`atom-${index}-${atomData.type}`, {
                     diameter: props.radius * 2,
-                    segments: 16 // Thumbnail için daha az segment
+                    segments: 16 // Thumbnail için daha az segment kullanılabilir
                 }, targetScene);
                 atom.position = atomData.pos;
 
@@ -340,21 +466,27 @@
                 }
             });
 
-            // Molekülü merkeze al ve kamera ayarlarını yap (eğer ana sahnedeyse)
+            // Molekülü merkeze al ve kamera ayarlarını yap (eğer bir kamera kontrolü isteniyorsa)
             if (cameraToControl) {
-                 // Molekülü sıfır noktasına göre ortala ve ölçekle
+                 // Molekülün etrafındaki sınırlayıcı kutuyu al
                 const bounds = moleculeContainer.getHierarchyBoundingVectors();
                 const size = bounds.max.subtract(bounds.min);
                 const maxDim = Math.max(size.x, size.y, size.z);
+
                 if (maxDim > 0) { // Bölme hatasını önle
-                    const scaleFactor = 2 / maxDim; // Kameranın rahatça görebileceği bir boyuta ölçekle
+                    // Kameranın molekülü rahatça görebileceği bir ölçek faktörü hesapla
+                    // (Ölçeklendirme, bounding box'ın en uzun boyutunu belirli bir değere getirerek yapılır)
+                    const targetSize = 2; // Hedeflenen boyut (kameranın görüntü alanına uygun)
+                    const scaleFactor = targetSize / maxDim;
                     moleculeContainer.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
+
+                    // Molekülü sahnenin merkezine taşı
                     const center = bounds.min.add(size.scale(0.5));
                     moleculeContainer.position = center.scale(-scaleFactor);
                 }
 
-                cameraToControl.setTarget(BABYLON.Vector3.Zero());
-                cameraToControl.lowerBetaLimit = 0;
+                cameraToControl.setTarget(BABYLON.Vector3.Zero()); // Kamerayı merkeze odakla
+                cameraToControl.lowerBetaLimit = 0; // Kamera döndürme limitlerini sıfırla
                 cameraToControl.upperBetaLimit = Math.PI;
             }
 
@@ -366,8 +498,12 @@
 
         function disposeAllThumbnails() {
             thumbnailScenes.forEach(item => {
-                item.scene.dispose();
-                item.engine.dispose();
+                if (item.scene) {
+                    item.scene.dispose(); // Sahneyi dispose et
+                }
+                if (item.engine) {
+                    item.engine.dispose(); // Motoru dispose et
+                }
             });
             thumbnailScenes.length = 0; // Diziyi temizle
         }
@@ -390,6 +526,7 @@
 
             if (searchTerm === "") {
                 resultsList.innerHTML = '<li>Lütfen bir madde adı veya formül girin.</li>';
+                // Arama boşsa ana görüntüleyiciyi de temizle
                 if (currentMainMoleculeContainer) {
                     currentMainMoleculeContainer.dispose();
                     currentMainMoleculeContainer = null;
@@ -409,94 +546,110 @@
                     currentMainMoleculeContainer = null;
                 }
             } else {
-                filteredMolecules.forEach(mol => {
-                    const itemLi = document.createElement('li');
-                    itemLi.className = 'result-item';
-
-                    // Metin kısmı
-                    const textSpan = document.createElement('span');
-                    textSpan.className = 'result-text';
-                    textSpan.textContent = `${mol.name} (${mol.formula})`;
-                    itemLi.appendChild(textSpan);
-
-                    // Thumbnail Canvas kısmı
-                    const thumbnailCanvas = document.createElement('canvas');
-                    thumbnailCanvas.className = 'thumbnail-canvas';
-                    itemLi.appendChild(thumbnailCanvas);
-
-                    resultsList.appendChild(itemLi);
-
-                    // --- Thumbnail için Babylon.js sahnesi oluştur ---
-                    const thumbEngine = new BABYLON.Engine(thumbnailCanvas, true, { preserveDrawingBuffer: true, stencil: true });
-                    const thumbScene = new BABYLON.Scene(thumbEngine);
-                    thumbScene.autoClear = true; // Her renderda sahneyi temizle
-
-                    // Thumbnail için basit bir kamera ve ışık
-                    const thumbCamera = new BABYLON.ArcRotateCamera("thumbCamera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), thumbScene);
-                    thumbCamera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA; // Ortografik kamera daha düzgün görünüm verebilir
-                    thumbCamera.orthoLeft = -1.5;
-                    thumbCamera.orthoRight = 1.5;
-                    thumbCamera.orthoTop = 1.5;
-                    thumbCamera.orthoBottom = -1.5;
-                    thumbCamera.setTarget(BABYLON.Vector3.Zero());
-                    thumbCamera.fovMode = BABYLON.Camera.FOVMODE_VERTICAL_FIXED; // Kamera FOV'unu sabit tut
-
-                    new BABYLON.HemisphericLight("thumbLight", new BABYLON.Vector3(0, 1, 0), thumbScene);
-
-                    // Molekülü thumbnail sahnesine çiz
-                    const thumbMolecule = createMoleculeMeshes(mol.structure, thumbScene, thumbCamera);
-
-                    // Thumbnail'ı döndürme animasyonu (isteğe bağlı)
-                    thumbScene.beforeRender = function() {
-                        if (thumbMolecule) {
-                            thumbMolecule.rotation.y += 0.02; // Y ekseninde döndür
-                        }
-                    };
-
-                    // Thumbnail render döngüsü
-                    thumbEngine.runRenderLoop(function () {
-                        thumbScene.render();
-                    });
-
-                    // Yeniden boyutlandırma olayını thumbnail'lara bağla
-                    window.addEventListener("resize", function () {
-                        thumbEngine.resize();
-                    });
-
-
-                    // Thumbnail sahnesini takip etmek için sakla
-                    thumbnailScenes.push({ engine: thumbEngine, scene: thumbScene });
-
-                    // Liste öğesine tıklama olayı (ana sahneyi güncellemek için)
-                    itemLi.addEventListener('click', () => {
-                        if (currentMainMoleculeContainer) {
-                            currentMainMoleculeContainer.dispose();
-                        }
-                        // Ana sahneye molekülü yeniden oluştur
-                        currentMainMoleculeContainer = createMoleculeMeshes(mol.structure, mainScene, mainScene.activeCamera);
-                    });
-                });
-
-                 // Tek eşleşme durumunda, ana sahneyi de güncelleyelim.
-                 // Eğer tek bir sonuç varsa, onu otomatik olarak ana sahneye yükle.
+                // Eğer tek sonuç varsa, önce ana ekranda göster
                 if (filteredMolecules.length === 1) {
                     const uniqueMatch = filteredMolecules[0];
                     if (currentMainMoleculeContainer) {
                         currentMainMoleculeContainer.dispose();
                     }
                     currentMainMoleculeContainer = createMoleculeMeshes(uniqueMatch.structure, mainScene, mainScene.activeCamera);
+                    // Ayrıca sonuç listesinde de göster
+                    addResultItemToDOM(uniqueMatch);
+                } else {
+                    // Birden fazla sonuç varsa, ilkini ana ekranda göster ve hepsini listele
+                    if (currentMainMoleculeContainer) {
+                        currentMainMoleculeContainer.dispose();
+                    }
+                    currentMainMoleculeContainer = createMoleculeMeshes(filteredMolecules[0].structure, mainScene, mainScene.activeCamera);
+                    filteredMolecules.forEach(mol => {
+                        addResultItemToDOM(mol);
+                    });
                 }
             }
         }
 
-        // Sayfa yüklendiğinde varsayılan bir molekülü göster
+        // Sonuç öğesini DOM'a ekleyen ve thumbnail'ı oluşturan yardımcı fonksiyon
+        function addResultItemToDOM(mol) {
+            const itemLi = document.createElement('li');
+            itemLi.className = 'result-item';
+
+            // Metin kısmı
+            const textSpan = document.createElement('span');
+            textSpan.className = 'result-text';
+            textSpan.textContent = `${mol.name} (${mol.formula})`;
+            itemLi.appendChild(textSpan);
+
+            // Thumbnail Canvas kısmı
+            const thumbnailCanvas = document.createElement('canvas');
+            thumbnailCanvas.className = 'thumbnail-canvas';
+            itemLi.appendChild(thumbnailCanvas);
+
+            resultsList.appendChild(itemLi);
+
+            // --- Thumbnail için Babylon.js sahnesi oluştur ---
+            const thumbEngine = new BABYLON.Engine(thumbnailCanvas, true, { preserveDrawingBuffer: true, stencil: true });
+            const thumbScene = new BABYLON.Scene(thumbEngine);
+            thumbScene.autoClear = true; // Her renderda sahneyi temizle
+            thumbScene.clearColor = new BABYLON.Color4(0, 0, 0, 0); // Şeffaf arka plan
+
+            // Thumbnail için basit bir kamera ve ışık
+            const thumbCamera = new BABYLON.ArcRotateCamera("thumbCamera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), thumbScene);
+            thumbCamera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA; // Ortografik kamera daha düzgün görünüm verebilir
+            // Kameranın boyutlarını canvas boyutuna uygun ayarla
+            const aspectRatio = thumbnailCanvas.width / thumbnailCanvas.height;
+            const orthoRadius = 1.5; // Görüntüleme yarıçapı
+            thumbCamera.orthoLeft = -orthoRadius * aspectRatio;
+            thumbCamera.orthoRight = orthoRadius * aspectRatio;
+            thumbCamera.orthoTop = orthoRadius;
+            thumbCamera.orthoBottom = -orthoRadius;
+            thumbCamera.setTarget(BABYLON.Vector3.Zero()); // Merkeze odakla
+            // thumbCamera.attachControl(thumbnailCanvas, true); // Thumbnail'larda kamera kontrolü istemiyoruz
+            // thumbCamera.fovMode = BABYLON.Camera.FOVMODE_VERTICAL_FIXED; // Zaten ortho modunda bu çok etkili değil
+
+            new BABYLON.HemisphericLight("thumbLight", new BABYLON.Vector3(0, 1, 0), thumbScene);
+
+            // Molekülü thumbnail sahnesine çiz
+            const thumbMolecule = createMoleculeMeshes(mol.structure, thumbScene, thumbCamera);
+
+            // Thumbnail'ı döndürme animasyonu
+            thumbScene.beforeRender = function() {
+                if (thumbMolecule) {
+                    thumbMolecule.rotation.y += 0.02; // Y ekseninde döndür
+                }
+            };
+
+            // Thumbnail render döngüsü
+            thumbEngine.runRenderLoop(function () {
+                thumbScene.render();
+            });
+
+            // Yeniden boyutlandırma olayını thumbnail'lara bağla (önemli)
+            // Bu sadece eğer thumbnail boyutları responsive ise gerekli olur.
+            // Bu örnekte sabit boyutlu oldukları için çok kritik değil, ama iyi bir pratiktir.
+            const resizeObserver = new ResizeObserver(() => {
+                thumbEngine.resize();
+            });
+            resizeObserver.observe(thumbnailCanvas);
+
+            // Thumbnail sahnesini takip etmek için sakla
+            thumbnailScenes.push({ engine: thumbEngine, scene: thumbScene, resizeObserver: resizeObserver });
+
+            // Liste öğesine tıklama olayı (ana sahneyi güncellemek için)
+            itemLi.addEventListener('click', () => {
+                if (currentMainMoleculeContainer) {
+                    currentMainMoleculeContainer.dispose();
+                }
+                // Ana sahneye molekülü yeniden oluştur
+                currentMainMoleculeContainer = createMoleculeMeshes(mol.structure, mainScene, mainScene.activeCamera);
+            });
+        }
+
+
+        // Sayfa yüklendiğinde varsayılan bir molekülü göster ve arama sonuçlarını listeleyerek thumbnail'ları oluştur
         const defaultMol = molecules.find(mol => mol.name === "Karbondioksit");
         if (defaultMol) {
-             createMoleculeMeshes(defaultMol.structure, mainScene, mainScene.activeCamera);
-             searchInput.value = defaultMol.name;
-             // Varsayılan olarak thumbnailler yüklenmiyor, performSearch çağırılmadığı için.
-             // Eğer varsayılanda da thumbnail istiyorsak, performSearch'i direkt çağırabiliriz.
-             performSearch(); // İlk yüklemede Karbondioksit'i hem ana ekranda hem thumbnail'da gösterir.
+             searchInput.value = defaultMol.name; // Arama kutusuna varsayılan ismi yaz
+             performSearch(); // Arama yaparak tüm listeyi ve thumbnailleri oluştur
         }
 
     </script>
