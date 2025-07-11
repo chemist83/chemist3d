@@ -171,8 +171,6 @@
             }
             // Daha fazla madde ekleyebilirsiniz
             // Not: Bu model yolları sadece örnektir. Kendi .gltf veya .babylon modellerinizi kullanmanız gerekecek.
-            // Modelleme kaynakları için: https://www.turbosquid.com/, https://sketchfab.com/ (molekül modelleri arayın)
-            // Veya Blender gibi bir yazılımla kendiniz oluşturun.
         ];
 
         // --- HTML ELEMENTS ---
@@ -196,16 +194,13 @@
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
             light.intensity = 0.7;
 
-            // Add a more directional light for better shadows/highlights (optional)
             const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(0, -1, -0.5), scene);
             dirLight.position = new BABYLON.Vector3(0, 5, 5);
             dirLight.intensity = 0.5;
 
-            // Basic environment (optional but good for visuals)
             const environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("https://assets.babylonjs.com/environments/environmentSpecular.env", scene);
             scene.environmentTexture = environmentTexture;
             scene.createDefaultSkybox(environmentTexture, true, 1000);
-
 
             return scene;
         };
@@ -232,36 +227,36 @@
 
             try {
                 // Import the model
+                // The "" "" in ImportMeshAsync are for meshNames and rootUrl.
+                // If modelPath is a full URL, rootUrl can be empty.
                 const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", modelPath, scene);
                 currentModel = result.meshes[0]; // Get the main mesh or root node
 
-                // If the model has multiple meshes and isn't parented, you might need to find the root or create one
-                // For simplicity, we assume result.meshes[0] is sufficient.
-
                 // Optional: Scale and center the model if needed
-                const bounds = currentModel.getHierarchyBoundingVectors();
-                const size = bounds.max.subtract(bounds.min);
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 2 / maxDim; // Adjust 2 to fit your scene scale
-                currentModel.scaling = new BABYLON.Vector3(scale, scale, scale);
+                if (currentModel) { // Ensure model was loaded
+                    const bounds = currentModel.getHierarchyBoundingVectors();
+                    const size = bounds.max.subtract(bounds.min);
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 2 / maxDim; // Adjust 2 to fit your scene scale
+                    currentModel.scaling = new BABYLON.Vector3(scale, scale, scale);
 
-                const center = bounds.min.add(size.scale(0.5));
-                currentModel.position = center.scale(-scale); // Center the model at origin
+                    const center = bounds.min.add(size.scale(0.5));
+                    currentModel.position = center.scale(-scale); // Center the model at origin
 
-                // Adjust camera to fit the new model
-                scene.createDefaultCameraOrLight(true, true, true);
-                // Reset camera target to origin
-                scene.activeCamera.setTarget(BABYLON.Vector3.Zero());
+                    // Adjust camera to fit the new model
+                    scene.createDefaultCameraOrLight(true, true, true);
+                    // Reset camera target to origin
+                    scene.activeCamera.setTarget(BABYLON.Vector3.Zero());
+                }
 
 
             } catch (error) {
                 console.error("Error loading model:", modelPath, error);
-                // Optionally display an error message to the user
-                resultsList.innerHTML = `<p style="color: red;">Model yüklenirken bir hata oluştu: ${modelPath}</p>`;
+                resultsList.innerHTML = `<li style="color: red;">Model yüklenirken bir hata oluştu: ${modelPath}</li>`;
             }
         }
 
-        // --- EVENT LISTENERS ---
+        // --- EVENT LISTENERS AND SEARCH LOGIC ---
         searchButton.addEventListener('click', () => {
             performSearch();
         });
@@ -273,8 +268,17 @@
         });
 
         function performSearch() {
-            const searchTerm = searchInput.value.toLowerCase();
+            const searchTerm = searchInput.value.toLowerCase().trim(); // Trim whitespace
             resultsList.innerHTML = ''; // Clear previous results
+
+            if (searchTerm === "") { // Handle empty search
+                resultsList.innerHTML = '<li>Lütfen bir madde adı veya formül girin.</li>';
+                if (currentModel) {
+                    currentModel.dispose();
+                    currentModel = null;
+                }
+                return;
+            }
 
             const filteredSubstances = substances.filter(sub =>
                 sub.name.toLowerCase().includes(searchTerm) ||
@@ -287,24 +291,34 @@
                     currentModel.dispose(); // Remove current model if no results
                     currentModel = null;
                 }
-                return;
-            }
+            } else if (filteredSubstances.length === 1) {
+                // *** DIRECT LOAD IF ONLY ONE MATCH ***
+                const uniqueMatch = filteredSubstances[0];
+                resultsList.innerHTML = `<li>En yakın sonuç: <strong>${uniqueMatch.name} (${uniqueMatch.formula})</strong></li>`;
+                loadModel(uniqueMatch.modelPath);
+            } else {
+                // Multiple matches, list them
+                resultsList.innerHTML = '<li>Birden fazla sonuç bulundu. Lütfen listeden seçin:</li>';
+                filteredSubstances.forEach(sub => {
+                    const itemLi = document.createElement('li');
+                    itemLi.className = 'result-item';
+                    itemLi.textContent = sub.name + ' (' + sub.formula + ')';
 
-            filteredSubstances.forEach(sub => {
-                const itemLi = document.createElement('li');
-                itemLi.className = 'result-item';
-                itemLi.textContent = sub.name + ' (' + sub.formula + ')';
-
-                itemLi.addEventListener('click', () => {
-                    loadModel(sub.modelPath);
+                    itemLi.addEventListener('click', () => {
+                        loadModel(sub.modelPath);
+                    });
+                    resultsList.appendChild(itemLi);
                 });
-                resultsList.appendChild(itemLi);
-            });
+            }
         }
 
-        // Initial load (optional: load a default model or show instructions)
-        // loadModel(substances[0].modelPath); // Load the first model by default
+        // Optional: Load a default model or show instructions on initial page load
+        // Example: load Carbon Dioxide as a starting point
+        // const defaultSubstance = substances.find(sub => sub.name === "Karbondioksit");
+        // if (defaultSubstance) {
+        //     loadModel(defaultSubstance.modelPath);
+        // }
     </script>
 
 </body>
-  </html>
+</html>
